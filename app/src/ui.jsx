@@ -21,6 +21,43 @@ export function Icon({n, s = 20, w = 1.8, style}) {
 // 金額；開啟「隱藏金額」時 .mv 會模糊
 export const M = ({v, sign}) => <span className="mv num">{sign ? (v >= 0 ? "+" : "−") : ""}{money(Math.abs(v))}</span>;
 
+// 媒體查詢，例如判斷是不是用滑鼠和實體鍵盤（電腦）
+export const FINE = "(hover: hover) and (pointer: fine)";
+export function useMedia(q) {
+    const get = () => typeof window !== "undefined" && !!window.matchMedia && window.matchMedia(q).matches;
+    const [m, setM] = useState(get);
+    useEffect(() => {
+        const mq = window.matchMedia(q), h = () => setM(mq.matches);
+        mq.addEventListener("change", h);
+        h();
+        return () => mq.removeEventListener("change", h);
+    }, [q]);
+    return m;
+}
+
+// 讓畫面跟著「看得到的區域」：iPhone 打開鍵盤時，App 縮到鍵盤上方，不會整個被推上去跑版
+export function useVisualViewport() {
+    useEffect(() => {
+        const vv = window.visualViewport;
+        if (!vv) return undefined;
+        const root = document.documentElement;
+        const h = () => {
+            const zoomed = Math.abs(vv.scale - 1) > 0.01; // 使用者自己放大畫面時不跟
+            root.style.setProperty("--vvh", (zoomed ? window.innerHeight : vv.height) + "px");
+            root.style.setProperty("--vvt", (zoomed ? 0 : vv.offsetTop) + "px");
+        };
+        h();
+        vv.addEventListener("resize", h);
+        vv.addEventListener("scroll", h);
+        return () => {
+            vv.removeEventListener("resize", h);
+            vv.removeEventListener("scroll", h);
+            root.style.removeProperty("--vvh");
+            root.style.removeProperty("--vvt");
+        };
+    }, []);
+}
+
 // Esc 依序關掉最上層的視窗
 const ESC = [];
 if (typeof window !== "undefined") {

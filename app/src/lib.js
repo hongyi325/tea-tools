@@ -109,18 +109,6 @@ export function lastPriceOf(list, who, excludeId) {
     });
     return best ? best.r : null;
 }
-// 銷售：沿用同一位客戶買同一種茶的上次每斤價格，沒有就用這種茶最近一次的價格（只用來帶入金額，不另外存欄位）
-export function lastSalePrice(sales, itemId, customerId, excludeId) {
-    let mine = null, any = null;
-    sales.forEach((s) => {
-        if (s.id === excludeId || s.itemId !== itemId || !(Number(s.qty) > 0) || !(Number(s.amount) > 0)) return;
-        if (!any || s.date > any.date) any = s;
-        if (customerId && s.customerId === customerId && (!mine || s.date > mine.date)) mine = s;
-    });
-    const s = mine || any;
-    if (!s) return null;
-    return {price: Math.round(Number(s.amount) / Number(s.qty)), why: mine ? `沿用 ${s.customerName} ${md(s.date)} 的價格` : `沿用這種茶 ${md(s.date)} 的價格`};
-}
 export const recentNames = (list, key, excludeId, limit, needPrice) => {
     const latest = new Map();
     list.forEach((r) => {
@@ -129,13 +117,6 @@ export const recentNames = (list, key, excludeId, limit, needPrice) => {
         if (!latest.has(n) || r.date > latest.get(n)) latest.set(n, r.date);
     });
     return [...latest.entries()].sort((a, b) => b[1].localeCompare(a[1])).slice(0, limit).map(([n]) => n);
-};
-export const recentCustomers = (db, limit) => {
-    const latest = new Map();
-    db.sales.forEach((s) => { if (s.customerId && (!latest.has(s.customerId) || s.date > latest.get(s.customerId))) latest.set(s.customerId, s.date); });
-    return db.customers.slice()
-        .sort((a, b) => (latest.get(b.id) || "").localeCompare(latest.get(a.id) || "") || a.name.localeCompare(b.name, "zh-Hant"))
-        .slice(0, limit);
 };
 export const yearsOf = (db) => {
     const set = new Set([...db.sales, ...db.expD, ...db.expP, ...db.expG].map((r) => Number(yrOf(r.date))).filter(Boolean));

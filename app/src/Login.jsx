@@ -1,23 +1,27 @@
 import {useEffect, useRef, useState} from "react";
-import {Icon} from "./ui.jsx";
+import {FINE, Icon, useMedia} from "./ui.jsx";
 import {mOf, today, wd} from "./lib.js";
 
-// 茶園梯田：三層山，後兩層畫茶樹行（用同一條稜線往下平移）
-function Hills({paper}) {
-    const mid = "M0 124 C110 92 220 84 330 100 C430 114 520 86 640 94", front = "M0 186 C140 154 260 160 380 174 C480 188 560 162 640 154";
-    const rows = (top, n, step) => Array.from({length: n}, (_, k) => <path key={k} d={top} transform={`translate(0 ${(k + 1) * step})`}/>);
-    const id = paper ? "hp" : "hd";
+// 一心二葉：一芽兩葉的茶枝，柔和漸層，慢慢擺動；旁邊幾點光點往上飄（光暈在卡片背景）
+function Sprig() {
+    const stop = (c, o) => <stop offset={o} style={{stopColor: `var(${c})`}}/>;
     return (
-        <svg className={"lg-hills" + (paper ? " to-paper" : "")} viewBox="0 0 640 220" aria-hidden="true">
+        <svg className="lg-sprig" viewBox="0 0 400 540" aria-hidden="true">
             <defs>
-                <clipPath id={id + "m"}><path d={mid + " V220 H0Z"}/></clipPath>
-                <clipPath id={id + "f"}><path d={front + " V220 H0Z"}/></clipPath>
+                <linearGradient id="lg-leaf1" x1="1" y1="1" x2="0" y2="0">{stop("--leaf-lo", 0)}{stop("--leaf-hi", 1)}</linearGradient>
+                <linearGradient id="lg-leaf2" x1="0" y1="1" x2="1" y2="0">{stop("--leaf-lo", 0)}{stop("--leaf-hi", 1)}</linearGradient>
+                <linearGradient id="lg-bud" x1="0" y1="1" x2="0.3" y2="0">{stop("--bud-lo", 0)}{stop("--bud-hi", 1)}</linearGradient>
             </defs>
-            <path className="h-far" d="M0 84 C100 58 180 52 270 64 C350 74 410 46 490 40 C570 34 615 50 640 56 V220 H0Z"/>
-            <path className="h-mid" d={mid + " V220 H0Z"}/>
-            <g className="h-rows" clipPath={`url(#${id}m)`}>{rows(mid, 6, 13)}</g>
-            <path className="h-front" d={front + " V220 H0Z"}/>
-            {paper ? null : <g className="h-rows" clipPath={`url(#${id}f)`}>{rows(front, 5, 14)}</g>}
+            <g className="sway">
+                <path className="stem" d="M214 560 C206 480 216 410 206 336 C198 276 206 214 199 154"/>
+                <path d="M206 346 C252 298 308 268 370 266 C340 326 274 364 206 346 Z" fill="url(#lg-leaf2)"/>
+                <path className="rib" d="M212 340 C262 314 312 290 358 272"/>
+                <path d="M202 252 C158 262 102 230 66 156 C130 152 184 194 202 252 Z" fill="url(#lg-leaf1)"/>
+                <path className="rib" d="M198 246 C158 220 116 192 80 164"/>
+                <path d="M199 156 C186 116 192 72 218 34 C230 78 223 122 199 156 Z" fill="url(#lg-bud)"/>
+            </g>
+            {[[262, 120, 2.6, 0], [318, 214, 2.2, 1.8], [150, 120, 2, 3.4], [292, 380, 2.4, 5]].map(([cx, cy, r, d]) => (
+                <circle key={cx} className="mote" cx={cx} cy={cy} r={r} style={{animationDelay: `${d}s`}}/>))}
         </svg>
     );
 }
@@ -26,7 +30,7 @@ function Hills({paper}) {
    手機＝全螢幕數字鍵盤；平板＝上方茶園意象、下方放大鍵盤；電腦＝左邊茶園意象、右邊輸入，可以全程用鍵盤。
    onAuth(mode, pin) 成功回傳 null（畫面會由登入狀態切走），失敗回傳錯誤訊息。 */
 export default function Login({size, onAuth}) {
-    const wide = size !== "phone";
+    const wide = size !== "phone", fine = useMedia(FINE);
     const [pin, setPin] = useState(""), [mode, setMode] = useState("login"), [phase, setPhase] = useState("idle"), [err, setErr] = useState(""), [hit, setHit] = useState(null);
     const cur = useRef();
     cur.current = {pin, phase, mode, onAuth};
@@ -98,18 +102,19 @@ export default function Login({size, onAuth}) {
     }
     const status = phase === "busy" ? <span className="lg-status busy"><Icon n="refresh" s={15}/>{mode === "login" ? "登入中…" : "設定中…"}</span>
         : err ? <span className="lg-status err" role="alert"><Icon n="alert" s={16}/>{err}</span>
-            : <span className="lg-status">{size === "desktop" ? <>直接用鍵盤輸入，打滿 4 碼自動登入 · <kbd>Backspace</kbd> 刪除</> : "打滿 4 碼自動登入"}</span>;
+            : <span className="lg-status">{fine ? <>直接用鍵盤輸入，打滿 4 碼自動登入 · <kbd>Backspace</kbd> 刪除</> : "打滿 4 碼自動登入"}</span>;
     const t = today();
     const date = `${mOf(t)} 月 ${parseInt(t.slice(8, 10), 10)} 日 星期${wd(t)}`;
     return (
         <div className={"login " + size}>
-            <section className="lg-brand"><span className="lg-sun" aria-hidden="true"/>
+            <section className="lg-brand">
                 <div className="lg-mark"><span className="seal lg">茶</span><b>茶葉記帳</b></div>
-                <div className="lg-copy">{size === "desktop"
-                    ? <><h2>茶園到茶廠，<br/>一本帳記清楚</h2><p>銷售、收款、支出和庫存都在這裡。<br/>手機、平板、電腦看到的是同一本帳。</p></>
-                    : <p>茶園到茶廠，一本帳記清楚</p>}</div>
+                <div className="lg-copy">
+                    <h2>茶園到茶廠，<br/>一本帳記清楚</h2>
+                    <p>銷售、收款、支出和庫存都在這裡。<br/>手機、平板、電腦看到的是同一本帳。</p>
+                </div>
                 <span className="lg-date">{date}</span>
-                <Hills paper={size === "tablet"}/>
+                <Sprig/>
             </section>
             <section className="lg-form">
                 <div className="lg-head"><p className="lg-kicker">{mode === "login" ? "歡迎回來" : "第一次使用"}</p><h2>{title}</h2></div>

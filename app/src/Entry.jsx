@@ -1,8 +1,8 @@
 import {useEffect, useMemo, useRef, useState} from "react";
-import {Ask, Icon, Panel, Sheet, useEscape, useSubSheet} from "./ui.jsx";
+import {Ask, FINE, Icon, Panel, Sheet, useEscape, useMedia, useSubSheet} from "./ui.jsx";
 import {
-    avTone, calcQP, catIcon, DEFAULT_CATS, evalExpr, hasOp, initial, jin, KIND, lastPriceOf, lastSalePrice, md, money, nf, nf0,
-    recentCustomers, recentNames, soldBy, stockState, today, typingTarget, wd,
+    avTone, calcQP, catIcon, DEFAULT_CATS, evalExpr, hasOp, initial, jin, KIND, lastPriceOf, md, money, nf, nf0,
+    recentNames, soldBy, stockState, today, typingTarget, wd,
 } from "./lib.js";
 
 const blank = (k, date = today()) => ({
@@ -36,6 +36,7 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
     const dirty = JSON.stringify(f) !== JSON.stringify(init);
     const K = KIND[kind];
     const sold = useMemo(() => soldBy(db.sales), [db.sales]);
+    const fine = useMedia(FINE);
 
     const put = (patch, man = manual) => {
         setF((prev) => {
@@ -60,20 +61,12 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
         if (dirty && !ask) { setAsk(true); return; }
         onClose();
     };
+    // 點茶種只選茶種，不自動帶入每斤單價
     const chooseItem = (it) => {
-        const lp = lastSalePrice(db.sales, it.id, f.customerId, f.id);
-        put({itemId: it.id, itemName: it.name, ...(lp ? {price: String(lp.price)} : {})});
-        setWhy(lp ? lp.why : null);
+        put({itemId: it.id, itemName: it.name});
         if (!f.qty) setActive("q");
     };
-    const chooseCustomer = (c) => {
-        const patch = {customerId: c ? c.id : null, customerName: c ? c.name : ""};
-        if (f.itemId) {
-            const lp = lastSalePrice(db.sales, f.itemId, c ? c.id : null, f.id);
-            if (lp && (why || !f.price)) { patch.price = String(lp.price); setWhy(lp.why); }
-        }
-        put(patch);
-    };
+    const chooseCustomer = (c) => put({customerId: c ? c.id : null, customerName: c ? c.name : ""});
     const setWho = (name, fromChip) => {
         const lp = lastPriceOf(db.expP, name, f.id);
         put({who: name, ...(lp ? {price: String(lp.price)} : {})});
@@ -177,11 +170,6 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
 
     let ctx = null;
     if (kind === "sale") {
-        const cust = recentCustomers(db, 5);
-        if (f.customerId && !cust.find((c) => c.id === f.customerId)) {
-            const c = db.customers.find((x) => x.id === f.customerId);
-            cust.unshift(c || {id: f.customerId, name: f.customerName || "（已刪除的客戶）"});
-        }
         const gone = f.itemId && !db.items.find((i) => i.id === f.itemId);
         ctx = <>
             <div className="ctx-label"><span>茶種</span><span>剩餘庫存</span></div>
@@ -197,17 +185,17 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
                         return <button key={it.id} className="tile" aria-pressed={f.itemId === it.id} onClick={() => chooseItem(it)}>
                             <span className="n">{it.name}</span><span className={"s num " + k}>剩 {jin(r)}</span></button>;
                     })}
-                    {onAddItem ? <button className="tile add" onClick={onAddItem}><Icon n="plus" s={16}/>新增</button> : null}
+                    {onAddItem ? <button className="tile tile-add" onClick={onAddItem}><Icon n="plus" s={16}/>新增</button> : null}
                 </div>
             )}
             <div className="ctx-label"><span>客戶</span></div>
-            <div className="chips">
-                <button className="chip" aria-pressed={!f.customerId} onClick={() => chooseCustomer(null)}>未指定</button>
-                {cust.map((c) => <button key={c.id} className="chip" aria-pressed={f.customerId === c.id} onClick={() => chooseCustomer(db.customers.find((x) => x.id === c.id) || c)}>{c.name}</button>)}
-                <button className="chip more" onClick={() => { setPq(""); openPick({}); }}><Icon n="search" s={16}/>全部客戶</button>
-            </div>
+            <button className="cust-field" onClick={() => { setPq(""); openPick({}); }} aria-label={f.customerName ? `客戶：${f.customerName}，點一下更換` : "選擇客戶"}>
+                <Icon n="search" s={18}/>
+                {f.customerName ? <span className="v">{f.customerName}{f.customerId && !db.customers.some((x) => x.id === f.customerId) ? "（已刪除）" : ""}</span>
+                    : <span className="ph">未指定客戶，點這裡搜尋</span>}
+                {f.customerName ? <span className="clear" role="button" aria-label="改成未指定客戶" onClick={(e) => { e.stopPropagation(); chooseCustomer(null); }}><Icon n="x" s={16}/></span> : null}
+            </button>
             <div className="fields">{fb("q", "斤數", f.qty, "斤")}{fb("price", "每斤單價", f.price, "", "NT$")}</div>
-            {why ? <div className="hint"><b>{why}</b>，不同價直接改單價。</div> : null}
             <button className="swrow" role="switch" aria-checked={!!f.paid} onClick={() => put({paid: !f.paid})}>
                 <span><span className="t">已收款</span><span className="d">{f.paid ? "這筆錢已經收到" : "還沒收到，會出現在未收款提醒"}</span></span>
                 <span className={"switch" + (f.paid ? " on" : "")}/>
@@ -287,14 +275,14 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
             <label className="mchip"><Icon n="calendar" s={16}/>{dateLabel}
                 <input type="date" value={f.date} onChange={(e) => e.target.value && put({date: e.target.value})} aria-label="日期"/></label>
         </div>
-        {keyboard && wide ? <div className="kbd-hint"><kbd>0–9</kbd> 輸入　<kbd>Enter</kbd> {editing ? "儲存" : "記下"}　<kbd>Esc</kbd> {panel ? (editing ? "回到記一筆" : "清空") : "關閉"}
+        {keyboard && wide && fine ? <div className="kbd-hint"><kbd>0–9</kbd> 輸入　<kbd>Enter</kbd> {editing ? "儲存" : "記下"}　<kbd>Esc</kbd> {panel ? (editing ? "回到記一筆" : "清空") : "關閉"}
             {panel ? <>　<kbd>N</kbd> 新的一筆</> : null}</div> : null}
     </>;
     const q = pq.trim().toLowerCase();
     const pickList = db.customers.filter((c) => !q || (c.name + (c.phone || "")).toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, "zh-Hant"));
     const picker = pick ? (
         <Sheet title="選擇客戶" closing={pick.closing} z={level + 1} drag={!wide} onRequestClose={closePick}>
-            <div className="search"><Icon n="search" s={18}/><input placeholder="輸入姓名或電話搜尋…" value={pq} onChange={(e) => setPq(e.target.value)} aria-label="搜尋客戶"/></div>
+            <div className="search"><Icon n="search" s={18}/><input placeholder="輸入姓名或電話搜尋…" autoFocus value={pq} onChange={(e) => setPq(e.target.value)} aria-label="搜尋客戶"/></div>
             <div>
                 <button className="pickrow none" onClick={() => { chooseCustomer(null); closePick(); }}>
                     <span className="av" style={{background: "var(--sunken)"}}><Icon n="user" s={18}/></span><span className="grow">未指定客戶</span>{!f.customerId ? <Icon n="check"/> : null}</button>

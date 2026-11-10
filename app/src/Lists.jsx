@@ -1,3 +1,4 @@
+import {useRef, useState} from "react";
 import {Icon} from "./ui.jsx";
 import {avTone, initial, jin, md, money, nf, nowYM, soldBy, stockState, sum, yrOf} from "./lib.js";
 
@@ -35,7 +36,65 @@ export function Stock({db, size, onOpen, onAdd, selected, detail}) {
 }
 
 /* ---------- 客戶 ---------- */
-function CustomerList({db, q, setQ, sort, setSort, onOpen, selected, onAdd}) {
+// 手指往左滑露出「刪除」，滑超過一半直接刪（和 iPhone 內建 App 一樣）；滑鼠不會觸發
+const SWIPE_W = 84;
+function SwipeRow({id, open, setOpen, onDelete, children}) {
+    const ref = useRef(null), st = useRef(null), swallow = useRef(false);
+    const [drag, setDrag] = useState(null);
+    const base = open === id ? -SWIPE_W : 0, x = drag ?? base;
+    const down = (e) => {
+        if (e.pointerType === "mouse" || e.button > 0) return;
+        st.current = {x0: e.clientX, y0: e.clientY, base, on: false, x: base, w: ref.current ? ref.current.offsetWidth : 360};
+    };
+    const move = (e) => {
+        const s = st.current;
+        if (!s) return;
+        const mx = e.clientX - s.x0, my = e.clientY - s.y0;
+        if (!s.on) {
+            if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { st.current = null; return; }
+            if (Math.abs(mx) < 10) return;
+            s.on = true;
+            if (open !== id) setOpen(null);
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* 不支援就算了 */ }
+        }
+        let nx = s.base + mx;
+        if (nx > 0) nx = nx / 4;
+        s.x = Math.max(-s.w, nx);
+        setDrag(s.x);
+    };
+    const up = () => {
+        const s = st.current;
+        st.current = null;
+        if (!s || !s.on) return;
+        swallow.current = true;
+        setTimeout(() => { swallow.current = false; }, 80);
+        if (s.x < -s.w * 0.55) {
+            setDrag(-s.w);
+            setTimeout(() => { setDrag(null); setOpen(null); onDelete(); }, 200);
+            return;
+        }
+        setDrag(null);
+        setOpen(s.x < -SWIPE_W / 2 ? id : null);
+    };
+    const click = (e) => {
+        if (swallow.current || open === id) {
+            e.stopPropagation();
+            e.preventDefault();
+            if (open === id && !swallow.current) setOpen(null);
+        }
+    };
+    return (
+        <div className="swipe" ref={ref}>
+            <button className="swipe-del" style={{width: Math.max(SWIPE_W, -x)}} tabIndex={open === id ? 0 : -1} aria-hidden={x === 0}
+                    onClick={() => { setOpen(null); onDelete(); }}><Icon n="trash" s={20}/>刪除</button>
+            <div className={"swipe-front" + (drag !== null ? " dragging" : "")} style={{transform: x ? `translateX(${x}px)` : undefined}}
+                 onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClickCapture={click}>{children}</div>
+        </div>
+    );
+}
+
+function CustomerList({db, q, setQ, sort, setSort, onOpen, selected, onAdd, onDelete, removing = []}) {
+    const [open, setOpen] = useState(null);
     const year = String(nowYM().y);
     const info = (c) => {
         const ss = db.sales.filter((s) => s.customerId === c.id);
@@ -44,28 +103,31 @@ function CustomerList({db, q, setQ, sort, setSort, onOpen, selected, onAdd}) {
     const qq = q.trim().toLowerCase();
     let list = db.customers.filter((c) => !qq || (c.name + (c.phone || "") + (c.address || "")).toLowerCase().includes(qq)).map((c) => ({c, ...info(c)}));
     const byName = (a, b) => a.c.name.localeCompare(b.c.name, "zh-Hant");
-    list.sort(sort === "recent" ? (a, b) => b.last.localeCompare(a.last) || byName(a, b)
-        : sort === "amount" ? (a, b) => b.year - a.year || byName(a, b)
-            : sort === "name" ? byName : (a, b) => b.due - a.due || byName(a, b));
+    list.sort(sort === "due" ? (a, b) => b.due - a.due || byName(a, b) : byName);
     if (sort === "due") list = list.filter((x) => x.due > 0);
     return <>
         <div className="head"><h1>客戶</h1><button className="icon-btn filled" aria-label="新增客戶" onClick={onAdd}><Icon n="plus"/></button></div>
         <div className="search"><Icon n="search" s={18}/><input placeholder="搜尋姓名、電話或地址…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="搜尋客戶"/></div>
-        <div className="filters">{[["recent", "最近買過"], ["amount", "今年買最多"], ["due", "有未收款"], ["name", "依姓名"]].map(([v, n]) => (
+        <div className="filters">{[["name", "依姓名"], ["due", "未收款"]].map(([v, n]) => (
             <button key={v} className="fchip" aria-pressed={sort === v} onClick={() => setSort(v)}>{n}</button>))}</div>
         {list.length === 0 ? (
             <div className="empty"><Icon n="users" s={30}/>{q ? `找不到「${q}」` : sort === "due" && db.customers.length ? "沒有人欠款" : "還沒有客戶，按右上角的 ＋ 新增"}</div>
         ) : (
-            <div className="rows">{list.map(({c, last, year: y, due}) => (
-                <div className="rw" key={c.id}><div>
+            <div className="rows">{list.map(({c, last, year: y, due}) => {
+                const row = (
                     <div className="row" aria-current={selected === c.id ? "true" : undefined} role="button" tabIndex={0} onClick={() => onOpen(c)} onKeyDown={(e) => e.key === "Enter" && onOpen(c)}>
                         <span className={"av " + avTone(c.name)}>{initial(c.name)}</span>
                         <span className="mid"><div className="t1">{c.name}</div><div className="t2 num">{last ? `最近買 ${md(last)}` : c.phone || "還沒買過"}</div></span>
                         <span className="end"><span className="num" style={{fontWeight: 600, fontSize: 15}}><span className="t2" style={{fontWeight: 400, marginRight: 4}}>今年</span><span className="mv">{money(y)}</span></span>
                             {due > 0 ? <span className="due" style={{pointerEvents: "none"}}>未收 <span className="mv num">{money(due)}</span></span> : null}</span>
                     </div>
-                </div></div>
-            ))}</div>
+                );
+                return (
+                    <div className={"rw" + (removing.includes(c.id) ? " removing" : "")} key={c.id}>
+                        {onDelete ? <SwipeRow id={c.id} open={open} setOpen={setOpen} onDelete={() => onDelete(c)}>{row}</SwipeRow> : <div>{row}</div>}
+                    </div>
+                );
+            })}</div>
         )}
     </>;
 }

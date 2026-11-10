@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {initializeApp} from "firebase/app";
 import {doc, getFirestore, onSnapshot, setDoc} from "firebase/firestore";
 import {createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut} from "firebase/auth";
-import {Icon} from "./ui.jsx";
+import {FINE, Icon, useMedia, useVisualViewport} from "./ui.jsx";
 import EntryCore from "./Entry.jsx";
 import {CustomerView, FormSheet, ItemView, SettingsSheet} from "./Views.jsx";
 import {HomePhone, HomeWide} from "./Home.jsx";
@@ -58,6 +58,7 @@ function Boot({text}) {
 
 export default function App() {
     const size = useSize();
+    useVisualViewport();
     const [user, setUser] = useState(null), [authReady, setAuthReady] = useState(false);
     const [theme, setThemeRaw] = useState(() => pref.get("theme", "system"));
     const setTheme = (t) => { setThemeRaw(t); pref.set("theme", t); };
@@ -92,11 +93,12 @@ function Ledger({user, size, theme, setTheme}) {
     const [pview, setPview] = useState("list"), [filter, setFilter] = useState("all"), [sel, setSel] = useState(null);
     const [masked, setMaskedRaw] = useState(() => pref.get("masked", false));
     const setMasked = (v) => { setMaskedRaw(v); pref.set("masked", v); };
-    const [cq, setCq] = useState(""), [cSort, setCSort] = useState("recent"), [selC, setSelC] = useState(null), [selI, setSelI] = useState(null);
+    const [cq, setCq] = useState(""), [cSort, setCSort] = useState("name"), [selC, setSelC] = useState(null), [selI, setSelI] = useState(null);
     const [deskEdit, setDeskEdit] = useState(null), [newKey, setNewKey] = useState(0), [lastKind, setLastKind] = useState("sale");
     const [sheets, setSheets] = useState([]), [toasts, setToasts] = useState([]), [sync, setSync] = useState("ok");
     const [flash, setFlash] = useState(null), [removing, setRemoving] = useState([]);
     const scrollRef = useRef(null), pending = useRef(0);
+    const fine = useMedia(FINE);
 
     // 雲端資料：ledgers/{uid}，一個文件裡六個陣列
     useEffect(() => {
@@ -271,7 +273,8 @@ function Ledger({user, size, theme, setTheme}) {
     if (tab === "stock") content = <Stock db={data} size={size} selected={curI} onAdd={addItem}
                                           onOpen={(it) => (size === "desktop" ? setSelI(it.id) : openSheet({kind: "item", iid: it.id}))}
                                           detail={size === "desktop" ? <ItemView key={curI} iid={curI} panel db={data} wide onEdit={(it) => openSheet({kind: "form", type: "item", rec: it})}/> : null}/>;
-    if (tab === "customers") content = <Customers db={data} size={size} q={cq} setQ={setCq} sort={cSort} setSort={setCSort} selected={wide ? curC : null}
+    if (tab === "customers") content = <Customers db={data} size={size} q={cq} setQ={setCq} sort={cSort} setSort={setCSort} selected={wide ? curC : null} removing={removing}
+                                                  onDelete={(cu) => removeRec("customer", cu)}
                                                   onOpen={(cu) => (wide ? setSelC(cu.id) : openSheet({kind: "customer", cid: cu.id}))} onAdd={() => openSheet({kind: "form", type: "customer"})}
                                                   detail={wide ? <CustomerView key={curC} cid={curC} panel db={data} wide onEdit={(cu) => openSheet({kind: "form", type: "customer", rec: cu})} onPaid={markPaid}
                                                                                onOpenEntry={(cu) => openSheet({kind: "entry", entryKind: "sale", presetCustomer: cu})}/> : null}/>;
@@ -306,7 +309,7 @@ function Ledger({user, size, theme, setTheme}) {
                     <span className="dact">
                         <button className="icon-btn" aria-label={masked ? "顯示金額" : "隱藏金額"} onClick={() => setMasked(!masked)}><Icon n={masked ? "eyeOff" : "eye"}/></button>
                         <button className="icon-btn" aria-label="設定" onClick={() => openSheet({kind: "settings"})}><Icon n="settings"/></button>
-                        {size === "desktop" ? <button className="btn primary sm" onClick={() => startNew()}><Icon n="plus" s={18}/>記一筆<kbd className="kb">N</kbd></button> : null}
+                        {size === "desktop" ? <button className="btn primary sm" onClick={() => startNew()}><Icon n="plus" s={18}/>記一筆{fine ? <kbd className="kb">N</kbd> : null}</button> : null}
                     </span>
                 </header>
                 <div className={"content" + (fixedLayout ? " fixed" : "")} ref={scrollRef}><div className={"content-in " + tab}>{content}</div></div>
