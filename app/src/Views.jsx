@@ -138,19 +138,8 @@ export function ItemView({iid, panel, sheet, level = 0, db, wide, onClose, onEdi
     return <Sheet title={it.name} closing={sheet.closing} z={level} drag={!wide} onRequestClose={onClose} footer={foot}>{body}</Sheet>;
 }
 
-/* ---------- 設定：外觀（最上面）、匯出、帳號；一打開就看得到全部 ---------- */
-function ThemeOption({value, label, icon, theme, setTheme}) {
-    return (
-        <button className={"theme-opt " + value} aria-pressed={theme === value} onClick={() => setTheme(value)}>
-            <span className="mini" aria-hidden="true">
-                <i className="m-hero"/><i className="m-row"/><i className="m-row short"/>
-            </span>
-            <span className="t-lab"><Icon n={icon} s={16}/>{label}<span className="t-dot">{theme === value ? <Icon n="check" s={13} w={3}/> : null}</span></span>
-        </button>
-    );
-}
-
-export function SettingsSheet({sheet, level, db, wide, theme, setTheme, masked, setMasked, sync, onClose, onExported, onLogout}) {
+/* ---------- 設定：隱私、匯出、帳號；一打開就看得到全部（淺色／深色在標題列）---------- */
+export function SettingsSheet({sheet, level, db, wide, masked, setMasked, sync, onClose, onExported, onLogout}) {
     const [y, setY] = useState(() => nowYM().y), [m, setM] = useState("all"), [t, setT] = useState({sales: true, exp: true, report: true});
     const years = yearsOf(db);
     const none = !t.sales && !t.exp && !t.report;
@@ -163,11 +152,7 @@ export function SettingsSheet({sheet, level, db, wide, theme, setTheme, masked, 
     return (
         <Sheet title="設定" closing={sheet.closing} z={level} drag={!wide} onRequestClose={onClose}>
             <div className="set-sec">
-                <div className="set-h">外觀</div>
-                <div className="theme-opts" role="radiogroup" aria-label="主題">
-                    <ThemeOption value="light" label="淺色" icon="sun" theme={theme} setTheme={setTheme}/>
-                    <ThemeOption value="dark" label="深色" icon="moon" theme={theme} setTheme={setTheme}/>
-                </div>
+                <div className="set-h">隱私</div>
                 <div className="group">
                     <button className="li" role="switch" aria-checked={masked} onClick={() => setMasked(!masked)}>
                         <Icon n={masked ? "eyeOff" : "eye"} s={18}/><span className="lk">隱藏金額<span className="d">在別人面前打開時，金額先模糊</span></span>

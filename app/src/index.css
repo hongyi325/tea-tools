@@ -650,28 +650,6 @@ button.li:active{background:var(--sunken)}
 /* ================= 設定：外觀在最上面，一打開就看得到全部 ================= */
 .set-sec{display:flex;flex-direction:column;gap:10px}
 .set-h{font-size:13px;color:var(--ink-3);padding-left:2px}
-.theme-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.theme-opt{border:1.5px solid var(--line);background:var(--surface);border-radius:18px;padding:8px 8px 10px;display:flex;flex-direction:column;gap:8px;text-align:left;
-  transition:border-color .2s,box-shadow .2s,transform .12s var(--ease-out)}
-.theme-opt:active{transform:scale(.98)}
-.theme-opt[aria-pressed="true"]{border-color:var(--tea);box-shadow:0 0 0 3px var(--tea-soft)}
-/* 小預覽固定畫該主題的顏色，不跟著目前主題變 */
-.theme-opt .mini{position:relative;display:flex;flex-direction:column;gap:5px;height:68px;border-radius:12px;padding:8px;overflow:hidden;
-  background:var(--m-bg);box-shadow:inset 0 0 0 1px var(--m-line)}
-.theme-opt.light .mini{--m-bg:#F4F6F1;--m-hero:#1D4B38;--m-row:#FFFFFF;--m-line:#DCE3DB;--m-ink:#C3CEC4}
-.theme-opt.dark .mini{--m-bg:#111714;--m-hero:#1A3A2B;--m-row:#18201C;--m-line:#28322C;--m-ink:#38443D}
-.mini i{display:block;border-radius:6px}
-.mini .m-hero{height:22px;background:var(--m-hero);position:relative}
-.mini .m-hero::after{content:"";position:absolute;left:8px;top:8px;width:34%;height:6px;border-radius:3px;background:color-mix(in srgb,#fff 70%,transparent)}
-.mini .m-row{height:11px;background:var(--m-row);box-shadow:inset 0 0 0 1px var(--m-line);position:relative}
-.mini .m-row::after{content:"";position:absolute;left:6px;top:4px;width:46%;height:3px;border-radius:2px;background:var(--m-ink)}
-.mini .m-row.short::after{width:30%}
-.t-lab{display:flex;align-items:center;gap:6px;font-size:14.5px;font-weight:500;color:var(--ink);padding:0 2px}
-.t-lab>svg{color:var(--ink-3)}
-.theme-opt[aria-pressed="true"] .t-lab{color:var(--tea);font-weight:600}
-.theme-opt[aria-pressed="true"] .t-lab>svg{color:var(--tea)}
-.t-dot{margin-left:auto;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;color:var(--on-tea);transition:background-color .2s,border-color .2s}
-.theme-opt[aria-pressed="true"] .t-dot{background:var(--tea);border-color:var(--tea)}
 .pick-sel{appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--sunken);border-radius:10px;height:34px;padding:0 12px;font-size:14px;color:var(--ink);flex:none;cursor:pointer}
 .opt-pills{display:flex;gap:6px;flex:none}
 .opt-pill{height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:13.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:3px}
@@ -680,4 +658,36 @@ button.li:active{background:var(--sunken)}
 .set-sec>.btn{height:48px}
 .btn:disabled{opacity:.45}
 /* 切換主題時顏色柔和過渡 */
-.theme-fade,.theme-fade *,.theme-fade *::before,.theme-fade *::after{transition:background-color .35s ease,color .35s ease,border-color .35s ease,fill .35s ease!important}
+:where(.theme-fade),:where(.theme-fade) :not(.tt,.tt *),:where(.theme-fade) :not(.tt,.tt *)::before,:where(.theme-fade) :not(.tt,.tt *)::after{transition:background-color .35s ease,color .35s ease,border-color .35s ease,fill .35s ease!important}
+
+/* ================= 淺色／深色開關（標題列） ================= */
+@property --tt-a{syntax:"<angle>";inherits:true;initial-value:100deg}
+.tt{--w:62px;--h:36px;--k:28px;--pad:4px;position:relative;flex:none;width:var(--w);height:var(--h);border:none;padding:0;margin-right:4px;background:transparent;cursor:pointer;border-radius:13px;
+  -webkit-tap-highlight-color:transparent;transition:--tt-a .7s cubic-bezier(.65,0,.35,1)}
+.tt.dark{--tt-a:100deg;--rim:#8E9BFF;--bloom:rgba(118,128,255,.55)}
+.tt.light{--tt-a:280deg;--rim:#FFB13B;--bloom:rgba(255,170,50,.6)}
+.tt-track{position:absolute;inset:0;border-radius:13px;transition:background .45s ease,box-shadow .45s ease}
+.tt.light .tt-track{background:linear-gradient(180deg,#E3E5E1,#F3F4F1);box-shadow:inset 0 1.5px 3px rgba(20,28,22,.22),inset 0 -1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(20,28,22,.06)}
+.tt.dark .tt-track{background:linear-gradient(180deg,#07090A,#121615);box-shadow:inset 0 1.5px 4px rgba(0,0,0,.75),inset 0 -1px 0 rgba(255,255,255,.05),0 0 0 1px rgba(255,255,255,.05)}
+.tt-knob{position:absolute;top:var(--pad);left:var(--pad);width:var(--k);height:var(--k);border-radius:9px;display:grid;place-items:center;
+  transition:transform .55s cubic-bezier(.65,0,.35,1),background .45s ease,box-shadow .45s ease}
+.tt.light .tt-knob{transform:translateX(calc(var(--w) - var(--k) - var(--pad) * 2));background:linear-gradient(180deg,#FFFFFF,#ECEDEA);
+  box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(20,28,22,.18),0 4px 10px -3px rgba(20,28,22,.25),0 -3px 12px -3px var(--bloom)}
+.tt.dark .tt-knob{background:linear-gradient(180deg,#3B4045,#22262A);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 6px rgba(0,0,0,.6),0 4px 12px -3px var(--bloom)}
+/* 光邊：一圈細框只亮一段，切換時沿著外框繞過去 */
+.tt-knob::before,.tt-knob::after{content:"";position:absolute;inset:-1.5px;border-radius:10.5px;padding:1.5px;pointer-events:none;
+  background:conic-gradient(from var(--tt-a),transparent 0 8%,var(--rim) 24% 46%,transparent 62% 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.tt-knob::after{filter:blur(4px);opacity:.9;inset:-3px;padding:3px;border-radius:12px}
+/* 點陣圖示：不在畫面上的那個散成粒子 */
+.pix{position:absolute;width:18px;height:18px;overflow:visible}
+.pix.moon{fill:#E7EBFF;filter:drop-shadow(0 0 2px rgba(150,160,255,.55))}
+.pix.sun{fill:#3C3F3B}
+.pix rect{transform-box:fill-box;transform-origin:center;transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease;transition-delay:var(--d)}
+.pix:not(.on) rect{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}
+.pix.on rect{transition-delay:calc(var(--d) + 220ms)}
+.tt:hover .tt-knob{filter:brightness(1.04)}
+.tt:active .tt-knob{scale:.96}
+.tt:focus-visible{outline:2px solid var(--tea);outline-offset:3px}
+@media (prefers-reduced-motion: reduce){.tt,.tt-knob,.tt-track,.pix rect{transition:none!important}}

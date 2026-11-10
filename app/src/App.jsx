@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {initializeApp} from "firebase/app";
 import {doc, getFirestore, onSnapshot, setDoc} from "firebase/firestore";
 import {createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut} from "firebase/auth";
-import {FINE, Icon, useMedia, useVisualViewport} from "./ui.jsx";
+import {FINE, Icon, ThemeToggle, useMedia, useVisualViewport} from "./ui.jsx";
 import EntryCore from "./Entry.jsx";
 import {CustomerView, FormSheet, ItemView, SettingsSheet} from "./Views.jsx";
 import {HomePhone, HomeWide} from "./Home.jsx";
@@ -257,7 +257,7 @@ function Ledger({user, size, theme, setTheme}) {
         if (s.kind === "customer") return <CustomerView key={s.id} {...c} cid={s.cid} onClose={() => closeSheet(s.id)} onEdit={(cu) => openSheet({kind: "form", type: "customer", rec: cu})} onPaid={markPaid}
                                                         onOpenEntry={(cu) => openSheet({kind: "entry", entryKind: "sale", presetCustomer: cu})}/>;
         if (s.kind === "item") return <ItemView key={s.id} {...c} iid={s.iid} onClose={() => closeSheet(s.id)} onEdit={(it) => openSheet({kind: "form", type: "item", rec: it})}/>;
-        if (s.kind === "settings") return <SettingsSheet key={s.id} {...c} theme={theme} setTheme={setTheme} masked={masked} setMasked={setMasked} sync={sync} onClose={() => closeSheet(s.id)}
+        if (s.kind === "settings") return <SettingsSheet key={s.id} {...c} masked={masked} setMasked={setMasked} sync={sync} onClose={() => closeSheet(s.id)}
                                                          onLogout={() => { setSheets([]); signOut(auth); }}
                                                          onExported={(name) => { closeSheet(s.id); toast(`已匯出「${name}」`); }}/>;
         return null;
@@ -275,7 +275,7 @@ function Ledger({user, size, theme, setTheme}) {
     const curI = (selI && data.items.some((i) => i.id === selI) ? selI : null) || (size === "desktop" && data.items[0] ? data.items[0].id : null);
 
     let content = null;
-    const homeProps = {db: data, p: hp, setP: setHp, view: pview, setView: setPview, filter, setFilter, sel, setSel, masked, setMasked, sync, size,
+    const homeProps = {db: data, p: hp, setP: setHp, view: pview, setView: setPview, filter, setFilter, sel, setSel, masked, setMasked, sync, size, theme, setTheme,
         openSettings: () => openSheet({kind: "settings"}), onOpen: openRow, onPaid: markPaid, flash, removing, entryPanel, selected: deskEdit ? deskEdit.r.id : null};
     if (tab === "home") content = size === "phone" ? <HomePhone {...homeProps}/> : <HomeWide {...homeProps}/>;
     if (tab === "stats") content = <Stats db={data} p={sp} setP={setSp} masked={masked} setMasked={setMasked} size={size}/>;
@@ -316,6 +316,7 @@ function Ledger({user, size, theme, setTheme}) {
                     <nav className="dtabs" aria-label="主要分頁">{tabsDef.map(([k, t, ic]) => (
                         <button key={k} className="dtab" aria-current={tab === k ? "page" : undefined} onClick={() => setTab(k)}><Icon n={ic} s={18}/>{t}</button>))}</nav>
                     <span className="dact">
+                        <ThemeToggle theme={theme} setTheme={setTheme}/>
                         <button className="icon-btn" aria-label={masked ? "顯示金額" : "隱藏金額"} onClick={() => setMasked(!masked)}><Icon n={masked ? "eyeOff" : "eye"}/></button>
                         <button className="icon-btn" aria-label="設定" onClick={() => openSheet({kind: "settings"})}><Icon n="settings"/></button>
                         {size === "desktop" ? <button className="btn primary sm" onClick={() => startNew()}><Icon n="plus" s={18}/>記一筆{fine ? <kbd className="kb">N</kbd> : null}</button> : null}

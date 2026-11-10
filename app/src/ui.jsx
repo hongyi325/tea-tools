@@ -195,3 +195,53 @@ export function Ask({text, keep, onKeep, onDiscard}) {
         </div>
     );
 }
+
+/* ---------- 淺色／深色開關（放在標題列）----------
+   凹槽裡一顆方形旋鈕：深色時在左邊，點陣月亮、左下邊緣亮藍紫光；淺色時在右邊，點陣太陽、右上邊緣亮暖橘光。
+   切換時圖示散成粒子再重組，光邊沿著旋鈕外框繞過去。 */
+const GRID = 11, CELL = 1.6;
+function dots(test) {
+    const out = [];
+    for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (test(x, y)) out.push([x, y]);
+    return out;
+}
+const MOON = [
+    ...dots((x, y) => (x - 4.6) ** 2 + (y - 5.6) ** 2 <= 4.3 ** 2 && (x - 7.2) ** 2 + (y - 3.6) ** 2 > 3.5 ** 2),
+    [9, 0], [8, 1], [9, 1], [10, 1], [9, 2], [7, 3],
+];
+const SUN = dots((x, y) => {
+    const d = Math.hypot(x - 5, y - 5);
+    if (d <= 1.9) return true;
+    const a = Math.atan2(y - 5, x - 5) / (Math.PI / 4);
+    return d >= 3.3 && d <= 5.1 && Math.abs(a - Math.round(a)) < 0.12;
+});
+// 每顆點固定一組散開的方向與延遲（同一次載入內不變，動畫才穩定）
+const scatter = (list, seed) => list.map(([x, y], i) => {
+    const r = Math.sin((i + 1) * 12.9898 + seed * 78.233) * 43758.5453, f = r - Math.floor(r);
+    const g = Math.sin((i + 7) * 3.7 + seed) * 9999, h = g - Math.floor(g);
+    return {x, y, dx: ((f - 0.5) * 22).toFixed(1), dy: ((h - 0.5) * 22).toFixed(1), d: Math.round(f * 160)};
+});
+const MOON_P = scatter(MOON, 1), SUN_P = scatter(SUN, 2);
+function PixelIcon({pts, on, cls}) {
+    return (
+        <svg className={"pix " + cls + (on ? " on" : "")} viewBox={`0 0 ${GRID * CELL} ${GRID * CELL}`} aria-hidden="true">
+            {pts.map((p, i) => (
+                <rect key={i} x={p.x * CELL + 0.15} y={p.y * CELL + 0.15} width={CELL - 0.3} height={CELL - 0.3} rx="0.25"
+                      style={{"--dx": p.dx + "px", "--dy": p.dy + "px", "--d": p.d + "ms"}}/>
+            ))}
+        </svg>
+    );
+}
+export function ThemeToggle({theme, setTheme}) {
+    const dark = theme === "dark";
+    return (
+        <button className={"tt " + (dark ? "dark" : "light")} role="switch" aria-checked={dark} aria-label="深色模式"
+                title={dark ? "切換成淺色" : "切換成深色"} onClick={() => setTheme(dark ? "light" : "dark")}>
+            <span className="tt-track"/>
+            <span className="tt-knob">
+                <PixelIcon pts={MOON_P} on={dark} cls="moon"/>
+                <PixelIcon pts={SUN_P} on={!dark} cls="sun"/>
+            </span>
+        </button>
+    );
+}

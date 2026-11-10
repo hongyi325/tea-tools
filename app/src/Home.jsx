@@ -1,5 +1,5 @@
 import {useMemo, useState} from "react";
-import {Icon, M, PeriodNav} from "./ui.jsx";
+import {Icon, M, PeriodNav, ThemeToggle} from "./ui.jsx";
 import {compact, dayLabel, inPeriod, ledger, md, mOf, nowYM, pShort, today, yrOf} from "./lib.js";
 
 function LedgerRows({entries, onOpen, onPaid, flash, removing, selected}) {
@@ -131,12 +131,13 @@ function Calendar({L, p, setP, sel, setSel, compact: small}) {
 
 /* ---------- 明細（手機） ---------- */
 export function HomePhone(props) {
-    const {db, p, setP, view, setView, filter, setFilter, sel, setSel, masked, setMasked, openSettings, sync} = props;
+    const {db, p, setP, view, setView, filter, setFilter, sel, setSel, masked, setMasked, openSettings, sync, theme, setTheme} = props;
     const h = useHome(db, p, filter, view === "calendar" && p.mode === "month" ? sel : null, "");
     return <>
         <div className="head">
             <span className="brand"><span className="seal">茶</span><b>茶葉記帳</b>
                 {sync === "saving" ? <span className="sync saving"><Icon n="refresh" s={13}/>同步中</span> : sync === "error" ? <span className="sync error"><Icon n="cloudAlert" s={13}/>未同步</span> : null}</span>
+            <ThemeToggle theme={theme} setTheme={setTheme}/>
             <button className="icon-btn" aria-label={masked ? "顯示金額" : "隱藏金額"} onClick={() => setMasked(!masked)}><Icon n={masked ? "eyeOff" : "eye"}/></button>
             <button className="icon-btn" aria-label="設定" onClick={openSettings}><Icon n="settings"/></button>
         </div>
