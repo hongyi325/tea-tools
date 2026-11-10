@@ -1,5 +1,5 @@
 import {useMemo, useRef, useState} from "react";
-import {Ask, Icon, Panel, PeriodNav, Sheet} from "./ui.jsx";
+import {Ask, FINE, Icon, Panel, PeriodNav, Sheet, useMedia} from "./ui.jsx";
 import {avTone, buildCsvRows, downloadCsv, initial, inPeriod, jin, md, money, nowYM, soldBy, stockState, sum, thisMonth, yearsOf} from "./lib.js";
 
 /* ---------- 新增／編輯 客戶、茶種 ---------- */
@@ -7,6 +7,8 @@ export function FormSheet({sheet, level, db, wide, onSave, onDelete, onClose}) {
     const {type} = sheet, editing = !!sheet.rec;
     const init = useMemo(() => (type === "customer" ? {name: "", phone: "", address: "", note: "", ...sheet.rec} : {name: "", qty: "", ...sheet.rec}), []); // eslint-disable-line react-hooks/exhaustive-deps
     const [f, setF] = useState(init), [errs, setErrs] = useState({}), [ask, setAsk] = useState(false);
+    // 電腦才自動把游標放進第一格；手機、平板等使用者點了才跳鍵盤，視窗滑上來時不會跟鍵盤搶動畫
+    const autoFocus = useMedia(FINE) && !editing;
     const dirty = JSON.stringify(f) !== JSON.stringify(init);
     const set = (k, v) => {
         setF((x) => ({...x, [k]: v}));
@@ -46,12 +48,12 @@ export function FormSheet({sheet, level, db, wide, onSave, onDelete, onClose}) {
                footer={<button className="btn primary grow" onClick={submit}>{editing ? "儲存" : "新增"}</button>}>
             {ask ? <Ask text="還沒存，要放棄修改嗎？" keep="繼續編輯" onKeep={() => setAsk(false)} onDiscard={onClose}/> : null}
             {type === "customer" ? <>
-                {fld("name", "姓名", true, inp("name", "客戶姓名", {autoFocus: !editing}))}
+                {fld("name", "姓名", true, inp("name", "客戶姓名", {autoFocus}))}
                 {fld("phone", "電話", false, inp("phone", "09xx-xxx-xxx", {inputMode: "tel"}))}
                 {fld("address", "收件地址", false, inp("address", "寄送地址"))}
                 {fld("note", "備註", false, inp("note", "偏好口味、注意事項…"))}
             </> : <>
-                {fld("name", "茶種名稱", true, inp("name", "例如 高山烏龍", {autoFocus: !editing}))}
+                {fld("name", "茶種名稱", true, inp("name", "例如 高山烏龍", {autoFocus}))}
                 {fld("qty", "進貨總斤數", true, inp("qty", "0", {inputMode: "decimal"}),
                     editing ? `已賣出 ${jin(sold)}，目前剩 ${jin(Number(f.qty || 0) - sold)}` : "剩餘會自動扣掉賣出的斤數")}
                 <div className="chips"><span className="hint" style={{alignSelf: "center"}}>補貨</span>

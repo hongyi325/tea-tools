@@ -623,3 +623,12 @@ kbd{font-family:var(--font-num);font-size:11px;font-weight:600;border:1px solid 
 .swipe-del{position:absolute;top:0;right:0;bottom:0;width:84px;border:none;background:var(--clay);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;font-weight:600}
 .swipe-front{position:relative;z-index:1;touch-action:pan-y;transition:transform .28s var(--ease-out)}
 .swipe-front.dragging{transition:none}
+
+/* ================= 手機：視窗動畫順暢、底部「記一筆」不被蓋住 =================
+   - 背景縮小只動 transform（圓角直接套用不做動畫），並先交給 GPU，避免 iPhone 每一格重畫
+   - 底部分頁列不用毛玻璃（縮放時很吃效能），改成不透明
+   - 分頁列固定在列表上層，中間凸出的「記一筆」不會被列表蓋住 */
+.app.phone{transition:transform .5s var(--ease-sheet);will-change:transform;backface-visibility:hidden}
+.scroll{position:relative;z-index:1}
+.nav{z-index:3;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;transform:translateZ(0)}
+.sheet{backface-visibility:hidden}

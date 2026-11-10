@@ -85,7 +85,7 @@ function SwipeRow({id, open, setOpen, onDelete, children}) {
     };
     return (
         <div className="swipe" ref={ref}>
-            <button className="swipe-del" style={{width: Math.max(SWIPE_W, -x)}} tabIndex={open === id ? 0 : -1} aria-hidden={x === 0}
+            <button className="swipe-del" style={{width: Math.max(SWIPE_W, -x), visibility: x < 0 ? "visible" : "hidden"}} tabIndex={open === id ? 0 : -1} aria-hidden={x === 0}
                     onClick={() => { setOpen(null); onDelete(); }}><Icon n="trash" s={20}/>刪除</button>
             <div className={"swipe-front" + (drag !== null ? " dragging" : "")} style={{transform: x ? `translateX(${x}px)` : undefined}}
                  onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClickCapture={click}>{children}</div>

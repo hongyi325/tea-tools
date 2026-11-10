@@ -282,7 +282,7 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
     const pickList = db.customers.filter((c) => !q || (c.name + (c.phone || "")).toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, "zh-Hant"));
     const picker = pick ? (
         <Sheet title="選擇客戶" closing={pick.closing} z={level + 1} drag={!wide} onRequestClose={closePick}>
-            <div className="search"><Icon n="search" s={18}/><input placeholder="輸入姓名或電話搜尋…" autoFocus value={pq} onChange={(e) => setPq(e.target.value)} aria-label="搜尋客戶"/></div>
+            <div className="search"><Icon n="search" s={18}/><input placeholder="輸入姓名或電話搜尋…" autoFocus={fine} value={pq} onChange={(e) => setPq(e.target.value)} aria-label="搜尋客戶"/></div>
             <div>
                 <button className="pickrow none" onClick={() => { chooseCustomer(null); closePick(); }}>
                     <span className="av" style={{background: "var(--sunken)"}}><Icon n="user" s={18}/></span><span className="grow">未指定客戶</span>{!f.customerId ? <Icon n="check"/> : null}</button>

@@ -46,12 +46,21 @@ export function useVisualViewport() {
             root.style.setProperty("--vvh", (zoomed ? window.innerHeight : vv.height) + "px");
             root.style.setProperty("--vvt", (zoomed ? 0 : vv.offsetTop) + "px");
         };
+        // 鍵盤收起後，iOS 有時會留下頁面捲動的位移，把它歸零
+        const out = () => setTimeout(() => {
+            if (!document.activeElement || !document.activeElement.closest("input,textarea,select")) {
+                if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0);
+                h();
+            }
+        }, 60);
         h();
         vv.addEventListener("resize", h);
         vv.addEventListener("scroll", h);
+        window.addEventListener("focusout", out);
         return () => {
             vv.removeEventListener("resize", h);
             vv.removeEventListener("scroll", h);
+            window.removeEventListener("focusout", out);
             root.style.removeProperty("--vvh");
             root.style.removeProperty("--vvt");
         };
