@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {
-    ArrowDownLeft, ArrowUpRight, Box, Calendar, ChartPie, Check, ChevronDown, ChevronLeft, ChevronRight, Circle, CircleAlert,
+    ArrowDownLeft, ArrowUpRight, Box, Calendar, ChartPie, Check, ChevronDown, CircleCheck, ChevronLeft, ChevronRight, Circle, CircleAlert,
     CloudAlert, CloudCheck, Copy, Delete, Download, Droplets, Eye, EyeOff, Factory, Flame, Gift, HandCoins, Leaf, List, LogOut,
     NotebookPen, Pencil, Plus, Receipt, RefreshCw, Scissors, Search, Settings, Sprout, Trash2, Truck, Undo2, User, Users, X, Zap,
 } from "lucide-react";
@@ -12,7 +12,7 @@ const ICONS = {
     zap: Zap, flame: Flame, sprout: Sprout, hand: HandCoins, droplets: Droplets, scissors: Scissors, receipt: Receipt, copy: Copy,
     search: Search, check: Check, x: X, backspace: Delete, undo: Undo2, download: Download, logout: LogOut, cloudCheck: CloudCheck,
     cloudAlert: CloudAlert, refresh: RefreshCw, alert: CircleAlert, trash: Trash2, pencil: Pencil, note: NotebookPen, user: User,
-    up: ArrowUpRight, down: ArrowDownLeft, circle: Circle, plus: Plus,
+    up: ArrowUpRight, down: ArrowDownLeft, circle: Circle, circleCheck: CircleCheck, plus: Plus,
 };
 export function Icon({n, s = 20, w = 1.8, style}) {
     const C = ICONS[n] || Circle;

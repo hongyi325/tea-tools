@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from "react";
+import {flushSync} from "react-dom";
 import {Ask, FINE, Icon, Panel, Sheet, useEscape, useMedia, useSubSheet} from "./ui.jsx";
 import {
     avTone, calcQP, catIcon, DEFAULT_CATS, evalExpr, hasOp, initial, jin, KIND, lastPriceOf, md, money, nf, nf0,
@@ -33,6 +34,13 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
     const [why, setWhy] = useState(null), [err, setErr] = useState(""), [ask, setAsk] = useState(false), [custom, setCustom] = useState(false);
     const [pick, openPick, closePick] = useSubSheet();
     const [pq, setPq] = useState("");
+    // 備註平常收起來，點了才出現；原本就有備註的紀錄直接顯示
+    const [noteOpen, setNoteOpen] = useState(() => !!(init.note || "").trim());
+    const noteRef = useRef(null);
+    const openNote = () => {
+        flushSync(() => setNoteOpen(true));
+        if (noteRef.current) noteRef.current.focus();
+    };
     const dirty = JSON.stringify(f) !== JSON.stringify(init);
     const K = KIND[kind];
     const sold = useMemo(() => soldBy(db.sales), [db.sales]);
@@ -160,47 +168,60 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
             onClick={(e) => { e.stopPropagation(); put({}, false); }}>改回自動</button></span>;
     } else if (hasCalc && manual) sub = <span>手動輸入的金額</span>;
     else if (hasCalc) sub = <span>{kind === "sale" ? "選茶種、輸入斤數就會算出金額" : "選對象、輸入斤數就會算出金額"}</span>;
-    const fb = (key, label, val, unit, pre) => (
-        <button className="fbtn" aria-pressed={active === key} onClick={() => setActive(key)}>
+    const cell = (key, label, val, unit, pre) => (
+        <button className="cell" aria-pressed={active === key} onClick={() => setActive(key)}>
             <span>{label}</span>
             <b className={"num" + (val ? "" : " ph")}>{pre && val ? pre + " " : ""}{val ? nf.format(Number(val)) + (String(val).endsWith(".") ? "." : "") : "0"}{unit ? " " + unit : ""}
                 {active === key ? <i className="caret"/> : null}</b>
         </button>
     );
+    const dateLabel = f.date === today() ? `今天 ${md(f.date)}` : f.date ? `${f.date.slice(0, 4) === today().slice(0, 4) ? "" : f.date.slice(0, 4) + "/"}${md(f.date)} 週${wd(f.date)}` : "選日期";
+    const dateRow = (
+        <label className="li"><Icon n="calendar" s={18}/><span className="lk">日期</span><span className="val">{dateLabel}</span><span className="chev"><Icon n="chevRight" s={16}/></span>
+            <input type="date" value={f.date} onChange={(e) => e.target.value && put({date: e.target.value})} aria-label="日期"/></label>
+    );
 
     let ctx = null;
     if (kind === "sale") {
         const gone = f.itemId && !db.items.find((i) => i.id === f.itemId);
+        const custGone = f.customerId && !db.customers.some((x) => x.id === f.customerId);
         ctx = <>
-            <div className="ctx-label"><span>茶種</span><span>剩餘庫存</span></div>
-            {db.items.length === 0 && !gone ? (
-                <div className="empty-note"><span>還沒有茶種，先新增一種茶才能記銷售</span>
-                    {onAddItem ? <button className="btn sm primary" onClick={onAddItem}><Icon n="plus" s={16}/>新增茶種</button> : null}</div>
-            ) : (
-                <div className="tiles">
-                    {gone ? <button className="tile gone" aria-pressed="true"><span className="n">{f.itemName}</span><span className="s">（已刪除）</span></button> : null}
-                    {db.items.map((it) => {
-                        const r = Number(it.qty || 0) - (sold[it.id] || 0) + (editing && init.itemId === it.id ? Number(init.qty || 0) : 0);
-                        const [k] = stockState(r);
-                        return <button key={it.id} className="tile" aria-pressed={f.itemId === it.id} onClick={() => chooseItem(it)}>
-                            <span className="n">{it.name}</span><span className={"s num " + k}>剩 {jin(r)}</span></button>;
-                    })}
-                    {onAddItem ? <button className="tile tile-add" onClick={onAddItem}><Icon n="plus" s={16}/>新增</button> : null}
-                </div>
-            )}
-            <div className="ctx-label"><span>客戶</span></div>
-            <button className="cust-field" onClick={() => { setPq(""); openPick({}); }} aria-label={f.customerName ? `客戶：${f.customerName}，點一下更換` : "選擇客戶"}>
-                <Icon n="search" s={18}/>
-                {f.customerName ? <span className="v">{f.customerName}{f.customerId && !db.customers.some((x) => x.id === f.customerId) ? "（已刪除）" : ""}</span>
-                    : <span className="ph">未指定客戶，點這裡搜尋</span>}
-                {f.customerName ? <span className="clear" role="button" aria-label="改成未指定客戶" onClick={(e) => { e.stopPropagation(); chooseCustomer(null); }}><Icon n="x" s={16}/></span> : null}
-            </button>
-            <div className="fields">{fb("q", "斤數", f.qty, "斤")}{fb("price", "每斤單價", f.price, "", "NT$")}</div>
-            <button className="swrow" role="switch" aria-checked={!!f.paid} onClick={() => put({paid: !f.paid})}>
-                <span><span className="t">已收款</span><span className="d">{f.paid ? "這筆錢已經收到" : "還沒收到，會出現在未收款提醒"}</span></span>
-                <span className={"switch" + (f.paid ? " on" : "")}/>
-            </button>
-            <input className="text-in" placeholder="備註（選填），例如 宅配" value={f.note || ""} onChange={(e) => put({note: e.target.value})} aria-label="備註"/>
+            <div className="sec">
+                <div className="sec-h"><span>茶種</span><span>剩餘斤數</span></div>
+                {db.items.length === 0 && !gone ? (
+                    <div className="empty-note"><span>還沒有茶種，先新增一種茶才能記銷售</span>
+                        {onAddItem ? <button className="btn sm primary" onClick={onAddItem}><Icon n="plus" s={16}/>新增茶種</button> : null}</div>
+                ) : (
+                    <div className="tchips">
+                        {gone ? <button className="tchip" aria-pressed="true">{f.itemName}<small>已刪除</small></button> : null}
+                        {db.items.map((it) => {
+                            const r = Number(it.qty || 0) - (sold[it.id] || 0) + (editing && init.itemId === it.id ? Number(init.qty || 0) : 0);
+                            const [k] = stockState(r);
+                            return <button key={it.id} className="tchip" aria-pressed={f.itemId === it.id} onClick={() => chooseItem(it)}>
+                                {it.name}<small className={"num " + k}>{nf.format(Math.round(r * 100) / 100)} 斤</small></button>;
+                        })}
+                        {onAddItem ? <button className="tchip tchip-add" onClick={onAddItem}><Icon n="plus" s={15}/>新增茶種</button> : null}
+                    </div>
+                )}
+            </div>
+            <div className="group">
+                <button className="li" onClick={() => { setPq(""); openPick({}); }}>
+                    <Icon n="user" s={18}/><span className="lk">客戶</span>
+                    <span className={"val" + (f.customerName ? "" : " ph")}>{f.customerName ? f.customerName + (custGone ? "（已刪除）" : "") : "未指定"}</span>
+                    <span className="chev"><Icon n="chevRight" s={16}/></span>
+                </button>
+                <button className="li" role="switch" aria-checked={!!f.paid} onClick={() => put({paid: !f.paid})}>
+                    <Icon n="circleCheck" s={18}/><span className="lk">已收款<span className="d">{f.paid ? "這筆錢已經收到" : "沒收到會列入未收款"}</span></span>
+                    <span className="val"/><span className={"switch" + (f.paid ? " on" : "")}/>
+                </button>
+                {dateRow}
+                {noteOpen ? (
+                    <div className="li"><Icon n="note" s={18}/><span className="lk">備註</span>
+                        <input ref={noteRef} className="li-in" placeholder="例如 宅配、送禮用" value={f.note || ""} onChange={(e) => put({note: e.target.value})} aria-label="備註"/></div>
+                ) : (
+                    <button className="li" onClick={openNote}><Icon n="note" s={18}/><span className="lk">備註</span><span className="val go"><Icon n="plus" s={14}/> 新增</span></button>
+                )}
+            </div>
         </>;
     }
     if (kind === "expP") {
@@ -208,23 +229,26 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
         const typed = (f.who || "").trim();
         const showInput = custom || (typed && !names.includes(typed));
         ctx = <>
-            <div className="ctx-label"><span>對象</span><span>上次單價</span></div>
+            <div className="sec">
+            <div className="sec-h"><span>對象</span><span>上次單價</span></div>
             <div className="chips">
                 {names.map((n) => <button key={n} className="chip" aria-pressed={typed === n && !custom} onClick={() => setWho(n, true)}>
                     {n}<small className="num">{nf.format(Number(lastPriceOf(db.expP, n, f.id).price))}/斤</small></button>)}
                 <button className="chip more" aria-pressed={!!showInput} onClick={() => setCustom(true)}><Icon n="pencil" s={15}/>其他</button>
             </div>
             {showInput ? <input className="text-in" placeholder="輸入對象名字" value={f.who} autoFocus={custom} onChange={(e) => setWho(e.target.value)} aria-label="對象"/> : null}
-            <div className="fields">{fb("q", "斤數", f.jin, "斤")}{fb("price", "每斤單價", f.price, "", "NT$")}</div>
             {why ? <div className="hint"><b>{why}</b>，這次不同可以直接改。</div>
                 : typed && !lastPriceOf(db.expP, typed, f.id) ? <div className="hint"><b>{typed} 還沒記過單價</b>：這次輸入後，下次就會自動帶入。</div> : null}
+            </div>
+            <div className="group">{dateRow}</div>
         </>;
     }
     if (kind === "expD" || kind === "expG") {
         const cats = [...new Set([...recentNames(db[kind], "item", f.id, 7), ...DEFAULT_CATS[kind]])].slice(0, 7);
         const isCustom = custom || (f.item && !cats.includes(f.item));
         ctx = <>
-            <div className="ctx-label"><span>類別</span><span>常用的排前面</span></div>
+            <div className="sec">
+            <div className="sec-h"><span>類別</span><span>常用的排前面</span></div>
             <div className="cats">
                 {cats.map((c) => <button key={c} className="cat" style={{color: `var(--${K.tone})`}} aria-pressed={f.item === c && !isCustom} onClick={() => { put({item: c}); setCustom(false); }}>
                     <span className={"ic " + K.tone}><Icon n={catIcon(c, kind)} s={22}/></span><span style={{color: "var(--ink-2)"}}>{c}</span></button>)}
@@ -232,9 +256,10 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
                     <span className="ic" style={{background: "var(--sunken)"}}><Icon n="pencil" s={20}/></span><span>自訂</span></button>
             </div>
             {isCustom ? <input className="text-in" placeholder="輸入事項，例如 修理揉捻機" value={f.item} autoFocus={custom} onChange={(e) => put({item: e.target.value})} aria-label="事項"/> : null}
+            </div>
+            <div className="group">{dateRow}</div>
         </>;
     }
-    const dateLabel = f.date === today() ? `今天 ${md(f.date)}` : f.date ? `${f.date.slice(0, 4) === today().slice(0, 4) ? "" : f.date.slice(0, 4) + "/"}${md(f.date)} 週${wd(f.date)}` : "選日期";
     const head = editing ? <h2 className="sh-title">編輯{K.label}</h2> : <>
         <div className="io-seg" role="group" aria-label="收入或支出">
             <span className="ind" style={{transform: `translateX(${K.group === "in" ? 0 : 100}%)`, background: K.group === "in" ? "var(--tea)" : "var(--clay)"}}/>
@@ -264,17 +289,16 @@ export default function EntryCore({panel, sheet, level = 0, db, wide, keyboard, 
         {ask ? <Ask text="還沒存，要放棄這一筆嗎？" keep="繼續記" onKeep={() => setAsk(false)} onDiscard={() => { setAsk(false); onClose(); }}/> : null}
         {!editing ? <div className="kinds">{Object.entries(KIND).filter(([, v]) => v.group === K.group).map(([k, v]) => (
             <button key={k} className={"kind " + v.tone} aria-pressed={kind === k} onClick={() => switchKind(k)}><Icon n={v.icon} s={16}/>{v.label}</button>))}</div> : null}
-        <button className="amount-display" aria-pressed={active === "amount"} onClick={() => setActive("amount")}>
-            <span className="ad-top"><span>{K.label}金額</span>{hasCalc ? <span className={"ad-tag" + (manual ? " man" : "")}>{manual ? "手動" : "自動計算"}</span> : null}</span>
-            <span className={"ad-val num " + K.group}><span className="cur">NT$</span>{showAmount}{active === "amount" ? <i className="caret" style={{height: 30, verticalAlign: -4}}/> : null}</span>
-            <span className="ad-sub">{sub}</span>
-        </button>
+        <div className="calc">
+            <button className="calc-amt" aria-pressed={active === "amount"} onClick={() => setActive("amount")}>
+                <span className="lab"><span>{K.label}金額</span>{hasCalc ? <span className={"pill" + (manual ? " man" : "")}>{manual ? "手動" : "自動計算"}</span> : null}</span>
+                <span className={"v num " + K.group}><span className="cur">NT$</span>{showAmount}{active === "amount" ? <i className="caret"/> : null}</span>
+                <span className="sub">{sub}</span>
+            </button>
+            {hasCalc ? <div className="qp">{cell("q", "斤數", f[qKey], "斤")}<span className="times">×</span>{cell("price", "每斤單價", f.price, "", "NT$")}</div> : null}
+        </div>
         {err ? <div className="err" role="alert"><Icon n="alert" s={16}/>{err}</div> : null}
         {ctx}
-        <div className="meta">
-            <label className="mchip"><Icon n="calendar" s={16}/>{dateLabel}
-                <input type="date" value={f.date} onChange={(e) => e.target.value && put({date: e.target.value})} aria-label="日期"/></label>
-        </div>
         {keyboard && wide && fine ? <div className="kbd-hint"><kbd>0–9</kbd> 輸入　<kbd>Enter</kbd> {editing ? "儲存" : "記下"}　<kbd>Esc</kbd> {panel ? (editing ? "回到記一筆" : "清空") : "關閉"}
             {panel ? <>　<kbd>N</kbd> 新的一筆</> : null}</div> : null}
     </>;
