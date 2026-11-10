@@ -60,11 +60,20 @@ export default function App() {
     const size = useSize();
     useVisualViewport();
     const [user, setUser] = useState(null), [authReady, setAuthReady] = useState(false);
-    const [theme, setThemeRaw] = useState(() => pref.get("theme", "system"));
-    const setTheme = (t) => { setThemeRaw(t); pref.set("theme", t); };
+    // 主題只有淺色、深色兩種，預設淺色（舊的「跟隨系統」當作淺色）
+    const [theme, setThemeRaw] = useState(() => (pref.get("theme", "light") === "dark" ? "dark" : "light"));
+    const setTheme = (t) => {
+        const r = document.documentElement;
+        r.classList.add("theme-fade");
+        setTimeout(() => r.classList.remove("theme-fade"), 450);
+        setThemeRaw(t);
+        pref.set("theme", t);
+    };
     useEffect(() => {
         const r = document.documentElement;
-        if (theme === "system") delete r.dataset.theme; else r.dataset.theme = theme;
+        r.dataset.theme = theme;
+        const meta = document.querySelectorAll('meta[name="theme-color"]');
+        meta.forEach((m) => { m.setAttribute("content", theme === "dark" ? "#111714" : "#F4F6F1"); m.removeAttribute("media"); });
     }, [theme]);
     useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true); }), []);
 

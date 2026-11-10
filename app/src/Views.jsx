@@ -138,43 +138,76 @@ export function ItemView({iid, panel, sheet, level = 0, db, wide, onClose, onEdi
     return <Sheet title={it.name} closing={sheet.closing} z={level} drag={!wide} onRequestClose={onClose} footer={foot}>{body}</Sheet>;
 }
 
-/* ---------- 設定：匯出、外觀、帳號 ---------- */
+/* ---------- 設定：外觀（最上面）、匯出、帳號；一打開就看得到全部 ---------- */
+function ThemeOption({value, label, icon, theme, setTheme}) {
+    return (
+        <button className={"theme-opt " + value} aria-pressed={theme === value} onClick={() => setTheme(value)}>
+            <span className="mini" aria-hidden="true">
+                <i className="m-hero"/><i className="m-row"/><i className="m-row short"/>
+            </span>
+            <span className="t-lab"><Icon n={icon} s={16}/>{label}<span className="t-dot">{theme === value ? <Icon n="check" s={13} w={3}/> : null}</span></span>
+        </button>
+    );
+}
+
 export function SettingsSheet({sheet, level, db, wide, theme, setTheme, masked, setMasked, sync, onClose, onExported, onLogout}) {
-    const [y, setY] = useState(() => nowYM().y), [m, setM] = useState("all"), [t, setT] = useState({sales: true, exp: true, report: true}), [err, setErr] = useState("");
+    const [y, setY] = useState(() => nowYM().y), [m, setM] = useState("all"), [t, setT] = useState({sales: true, exp: true, report: true});
     const years = yearsOf(db);
+    const none = !t.sales && !t.exp && !t.report;
     const run = () => {
-        if (!t.sales && !t.exp && !t.report) { setErr("至少選一種資料"); return; }
+        if (none) return;
         const {rows, name} = buildCsvRows(db, y, m, t);
         downloadCsv(name, rows);
         onExported(name);
     };
     return (
         <Sheet title="設定" closing={sheet.closing} z={level} drag={!wide} onRequestClose={onClose}>
-            <div className="group-title">匯出 CSV</div>
-            <div className="chips">
-                {years.map((yy) => <button key={yy} className="chip num" aria-pressed={y === yy} onClick={() => setY(yy)}>{yy}</button>)}
-                <select className="chip" value={m} onChange={(e) => setM(e.target.value)} aria-label="月份">
-                    <option value="all">全年</option>
-                    {Array.from({length: 12}, (_, i) => <option key={i} value={i + 1}>{i + 1} 月</option>)}
-                </select>
+            <div className="set-sec">
+                <div className="set-h">外觀</div>
+                <div className="theme-opts" role="radiogroup" aria-label="主題">
+                    <ThemeOption value="light" label="淺色" icon="sun" theme={theme} setTheme={setTheme}/>
+                    <ThemeOption value="dark" label="深色" icon="moon" theme={theme} setTheme={setTheme}/>
+                </div>
+                <div className="group">
+                    <button className="li" role="switch" aria-checked={masked} onClick={() => setMasked(!masked)}>
+                        <Icon n={masked ? "eyeOff" : "eye"} s={18}/><span className="lk">隱藏金額<span className="d">在別人面前打開時，金額先模糊</span></span>
+                        <span className="val"/><span className={"switch" + (masked ? " on" : "")}/>
+                    </button>
+                </div>
             </div>
-            <div className="toggles">{[["sales", "銷售明細"], ["exp", "開支與茶廠收入"], ["report", "報表整頁"]].map(([k, n]) => (
-                <button key={k} className="tog" aria-pressed={t[k]} onClick={() => { setT((x) => ({...x, [k]: !x[k]})); setErr(""); }}>
-                    <span className="box">{t[k] ? <Icon n="check" s={15} w={2.6}/> : null}</span>{n}</button>))}</div>
-            {err ? <span className="emsg">{err}</span> : null}
-            <button className="btn primary" onClick={run}><Icon n="download" s={18}/>匯出 {y} {m === "all" ? "全年" : m + " 月"}</button>
-            <div className="group-title">外觀與隱私</div>
-            <div className="chips">{[["system", "跟隨系統"], ["light", "淺色"], ["dark", "深色"]].map(([v, n]) => (
-                <button key={v} className="chip" aria-pressed={theme === v} onClick={() => setTheme(v)}>{n}</button>))}</div>
-            <button className="swrow" role="switch" aria-checked={masked} onClick={() => setMasked(!masked)}>
-                <span><span className="t">隱藏金額</span><span className="d">在別人面前打開 App 時，金額會先模糊</span></span>
-                <span className={"switch" + (masked ? " on" : "")}/>
-            </button>
-            <div className="group-title">帳號</div>
-            <div className="list-card">
-                <div className="lrow"><Icon n={sync === "saving" ? "refresh" : sync === "error" ? "cloudAlert" : "cloudCheck"}/>
-                    <span className="grow">{sync === "saving" ? "同步中…" : sync === "error" ? "有資料還沒存到雲端，請檢查網路" : "已同步到雲端"}</span></div>
-                <button className="lrow" onClick={onLogout} style={{color: "var(--clay)"}}><Icon n="logout"/><span className="grow">登出</span></button>
+            <div className="set-sec">
+                <div className="set-h">匯出 CSV</div>
+                <div className="group">
+                    <div className="li">
+                        <Icon n="calendar" s={18}/><span className="lk">期間</span><span className="val"/>
+                        <select className="pick-sel num" value={y} onChange={(e) => setY(Number(e.target.value))} aria-label="年份">
+                            {years.map((yy) => <option key={yy} value={yy}>{yy} 年</option>)}
+                        </select>
+                        <select className="pick-sel" value={m} onChange={(e) => setM(e.target.value)} aria-label="月份">
+                            <option value="all">全年</option>
+                            {Array.from({length: 12}, (_, i) => <option key={i} value={i + 1}>{i + 1} 月</option>)}
+                        </select>
+                    </div>
+                    <div className="li">
+                        <Icon n="note" s={18}/><span className="lk">內容</span><span className="val"/>
+                        <span className="opt-pills">{[["sales", "銷售"], ["exp", "開支"], ["report", "報表"]].map(([k, n]) => (
+                            <button key={k} className="opt-pill" aria-pressed={t[k]} onClick={() => setT((x) => ({...x, [k]: !x[k]}))}>
+                                {t[k] ? <Icon n="check" s={13} w={2.6}/> : null}{n}</button>))}</span>
+                    </div>
+                </div>
+                <button className="btn primary" disabled={none} onClick={run}>
+                    <Icon n="download" s={18}/>{none ? "至少選一種內容" : `匯出 ${y} ${m === "all" ? "全年" : m + " 月"}`}</button>
+            </div>
+            <div className="set-sec">
+                <div className="set-h">帳號</div>
+                <div className="group">
+                    <div className="li">
+                        <Icon n={sync === "saving" ? "refresh" : sync === "error" ? "cloudAlert" : "cloudCheck"} s={18}/>
+                        <span className="lk">{sync === "saving" ? "同步中…" : sync === "error" ? "有資料還沒存到雲端" : "已同步到雲端"}</span>
+                        <span className="val"/>
+                        <button className="logout" onClick={onLogout}><Icon n="logout" s={16}/>登出</button>
+                    </div>
+                </div>
             </div>
         </Sheet>
     );
