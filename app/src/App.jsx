@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import {flushSync} from "react-dom";
 import {initializeApp} from "firebase/app";
 import {doc, getFirestore, onSnapshot, setDoc} from "firebase/firestore";
 import {createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut} from "firebase/auth";
@@ -62,12 +63,17 @@ export default function App() {
     const [user, setUser] = useState(null), [authReady, setAuthReady] = useState(false);
     // 主題只有淺色、深色兩種，預設淺色（舊的「跟隨系統」當作淺色）
     const [theme, setThemeRaw] = useState(() => (pref.get("theme", "light") === "dark" ? "dark" : "light"));
+    // 換主題：支援的瀏覽器用「新舊畫面淡入淡出」（GPU 處理，不卡），其他瀏覽器直接切換
     const setTheme = (t) => {
-        const r = document.documentElement;
-        r.classList.add("theme-fade");
-        setTimeout(() => r.classList.remove("theme-fade"), 450);
-        setThemeRaw(t);
         pref.set("theme", t);
+        const apply = () => {
+            document.documentElement.dataset.theme = t;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", t === "dark" ? "#111714" : "#F4F6F1");
+            flushSync(() => setThemeRaw(t));
+        };
+        if (document.startViewTransition && !reduceMotion()) document.startViewTransition(apply);
+        else apply();
     };
     useEffect(() => {
         const r = document.documentElement;

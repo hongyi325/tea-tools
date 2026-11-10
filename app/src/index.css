@@ -657,37 +657,36 @@ button.li:active{background:var(--sunken)}
 .logout{flex:none;border:none;background:var(--clay-soft);color:var(--clay);height:34px;padding:0 12px;border-radius:10px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:5px}
 .set-sec>.btn{height:48px}
 .btn:disabled{opacity:.45}
-/* 切換主題時顏色柔和過渡 */
-:where(.theme-fade),:where(.theme-fade) :not(.tt,.tt *),:where(.theme-fade) :not(.tt,.tt *)::before,:where(.theme-fade) :not(.tt,.tt *)::after{transition:background-color .35s ease,color .35s ease,border-color .35s ease,fill .35s ease!important}
 
-/* ================= 淺色／深色開關（標題列） ================= */
-@property --tt-a{syntax:"<angle>";inherits:true;initial-value:100deg}
-.tt{--w:62px;--h:36px;--k:28px;--pad:4px;position:relative;flex:none;width:var(--w);height:var(--h);border:none;padding:0;margin-right:4px;background:transparent;cursor:pointer;border-radius:13px;
-  -webkit-tap-highlight-color:transparent;transition:--tt-a .7s cubic-bezier(.65,0,.35,1)}
-.tt.dark{--tt-a:100deg;--rim:#8E9BFF;--bloom:rgba(118,128,255,.55)}
-.tt.light{--tt-a:280deg;--rim:#FFB13B;--bloom:rgba(255,170,50,.6)}
-.tt-track{position:absolute;inset:0;border-radius:13px;transition:background .45s ease,box-shadow .45s ease}
-.tt.light .tt-track{background:linear-gradient(180deg,#E3E5E1,#F3F4F1);box-shadow:inset 0 1.5px 3px rgba(20,28,22,.22),inset 0 -1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(20,28,22,.06)}
-.tt.dark .tt-track{background:linear-gradient(180deg,#07090A,#121615);box-shadow:inset 0 1.5px 4px rgba(0,0,0,.75),inset 0 -1px 0 rgba(255,255,255,.05),0 0 0 1px rgba(255,255,255,.05)}
-.tt-knob{position:absolute;top:var(--pad);left:var(--pad);width:var(--k);height:var(--k);border-radius:9px;display:grid;place-items:center;
-  transition:transform .55s cubic-bezier(.65,0,.35,1),background .45s ease,box-shadow .45s ease}
-.tt.light .tt-knob{transform:translateX(calc(var(--w) - var(--k) - var(--pad) * 2));background:linear-gradient(180deg,#FFFFFF,#ECEDEA);
-  box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(20,28,22,.18),0 4px 10px -3px rgba(20,28,22,.25),0 -3px 12px -3px var(--bloom)}
-.tt.dark .tt-knob{background:linear-gradient(180deg,#3B4045,#22262A);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 6px rgba(0,0,0,.6),0 4px 12px -3px var(--bloom)}
-/* 光邊：一圈細框只亮一段，切換時沿著外框繞過去 */
-.tt-knob::before,.tt-knob::after{content:"";position:absolute;inset:-1.5px;border-radius:10.5px;padding:1.5px;pointer-events:none;
-  background:conic-gradient(from var(--tt-a),transparent 0 8%,var(--rim) 24% 46%,transparent 62% 100%);
+
+/* ================= 淺色／深色開關（標題列） =================
+   淺色、深色各一層外觀，切換時只改透明度與位移（GPU 處理，手機不卡）；光暈是靜態的，跟著旋鈕一起移動 */
+.tt{--w:62px;--h:36px;--k:28px;--pad:4px;position:relative;flex:none;width:var(--w);height:var(--h);border:none;padding:0;margin-right:4px;background:transparent;cursor:pointer;
+  border-radius:13px;-webkit-tap-highlight-color:transparent;view-transition-name:theme-toggle;touch-action:manipulation}
+.tt-track{position:absolute;inset:0;border-radius:13px;transition:opacity .45s ease;will-change:opacity}
+.tt-track.l{background:linear-gradient(180deg,#E3E5E1,#F3F4F1);box-shadow:inset 0 1.5px 3px rgba(20,28,22,.22),inset 0 -1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(20,28,22,.06)}
+.tt-track.d{background:linear-gradient(180deg,#07090A,#121615);box-shadow:inset 0 1.5px 4px rgba(0,0,0,.75),inset 0 -1px 0 rgba(255,255,255,.05),0 0 0 1px rgba(255,255,255,.06)}
+.tt.dark .tt-track.l,.tt.light .tt-track.d{opacity:0}
+.tt-knob{position:absolute;top:var(--pad);left:var(--pad);width:var(--k);height:var(--k);border-radius:9px;transition:transform .55s cubic-bezier(.65,0,.35,1);will-change:transform}
+.tt.light .tt-knob{transform:translateX(calc(var(--w) - var(--k) - var(--pad) * 2))}
+.sk{position:absolute;inset:0;border-radius:9px;transition:opacity .4s ease;will-change:opacity}
+.sk.l{background:linear-gradient(180deg,#FFFFFF,#ECEDEA);box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(20,28,22,.18),0 4px 10px -3px rgba(20,28,22,.25),0 -3px 12px -3px rgba(255,170,50,.6)}
+.sk.d{background:linear-gradient(180deg,#3B4045,#22262A);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 6px rgba(0,0,0,.6),0 4px 12px -3px rgba(118,128,255,.55)}
+.tt.dark .sk.l,.tt.light .sk.d{opacity:0}
+/* 光邊：一圈細框只亮一段（淺色右上、深色左下） */
+.sk::before,.sk::after{content:"";position:absolute;inset:-1.5px;border-radius:10.5px;padding:1.5px;pointer-events:none;
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-.tt-knob::after{filter:blur(4px);opacity:.9;inset:-3px;padding:3px;border-radius:12px}
-/* 點陣圖示：不在畫面上的那個散成粒子 */
-.pix{position:absolute;width:18px;height:18px;overflow:visible}
-.pix.moon{fill:#E7EBFF;filter:drop-shadow(0 0 2px rgba(150,160,255,.55))}
-.pix.sun{fill:#3C3F3B}
-.pix rect{transform-box:fill-box;transform-origin:center;transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease;transition-delay:var(--d)}
-.pix:not(.on) rect{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}
-.pix.on rect{transition-delay:calc(var(--d) + 220ms)}
-.tt:hover .tt-knob{filter:brightness(1.04)}
-.tt:active .tt-knob{scale:.96}
+.sk.l::before,.sk.l::after{background:conic-gradient(from 280deg,transparent 0 8%,#FFB13B 24% 46%,transparent 62% 100%)}
+.sk.d::before,.sk.d::after{background:conic-gradient(from 100deg,transparent 0 8%,#8E9BFF 24% 46%,transparent 62% 100%)}
+.sk::after{filter:blur(4px);opacity:.9;inset:-3px;padding:3px;border-radius:12px}
+.tt-pix{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.tt.dark .tt-pix{filter:drop-shadow(0 0 1.5px rgba(150,160,255,.5))}
 .tt:focus-visible{outline:2px solid var(--tea);outline-offset:3px}
-@media (prefers-reduced-motion: reduce){.tt,.tt-knob,.tt-track,.pix rect{transition:none!important}}
+@media (hover:hover){.tt:hover .tt-knob{filter:brightness(1.04)}}
+@media (prefers-reduced-motion: reduce){.tt-knob,.tt-track,.sk{transition:none!important}}
+/* 全頁換色：瀏覽器把新舊畫面直接淡入淡出（不逐個元素算顏色）；開關自己另外處理，維持即時動畫 */
+::view-transition-old(root),::view-transition-new(root){animation-duration:.34s;animation-timing-function:ease}
+::view-transition-group(theme-toggle){animation:none}
+::view-transition-old(theme-toggle){display:none}
+::view-transition-new(theme-toggle){animation:none}
+@media (prefers-reduced-motion: reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}

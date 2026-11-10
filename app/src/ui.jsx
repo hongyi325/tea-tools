@@ -198,8 +198,8 @@ export function Ask({text, keep, onKeep, onDiscard}) {
 
 /* ---------- 淺色／深色開關（放在標題列）----------
    凹槽裡一顆方形旋鈕：深色時在左邊，點陣月亮、左下邊緣亮藍紫光；淺色時在右邊，點陣太陽、右上邊緣亮暖橘光。
-   切換時圖示散成粒子再重組，光邊沿著旋鈕外框繞過去。 */
-const GRID = 11, CELL = 1.6;
+   切換時圖示散成粒子再重組。為了在手機上順暢：外觀只用透明度與位移（交給 GPU），粒子畫在一張小畫布上。 */
+const GRID = 11, CELL = 1.6, KNOB = 28;
 function dots(test) {
     const out = [];
     for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (test(x, y)) out.push([x, y]);
@@ -215,32 +215,67 @@ const SUN = dots((x, y) => {
     const a = Math.atan2(y - 5, x - 5) / (Math.PI / 4);
     return d >= 3.3 && d <= 5.1 && Math.abs(a - Math.round(a)) < 0.12;
 });
-// 每顆點固定一組散開的方向與延遲（同一次載入內不變，動畫才穩定）
+// 每顆點固定一組散開的方向與延遲，粒子只在旋鈕範圍內散開
 const scatter = (list, seed) => list.map(([x, y], i) => {
     const r = Math.sin((i + 1) * 12.9898 + seed * 78.233) * 43758.5453, f = r - Math.floor(r);
     const g = Math.sin((i + 7) * 3.7 + seed) * 9999, h = g - Math.floor(g);
-    return {x, y, dx: ((f - 0.5) * 22).toFixed(1), dy: ((h - 0.5) * 22).toFixed(1), d: Math.round(f * 160)};
+    return {x: x * CELL, y: y * CELL, dx: (f - 0.5) * 12, dy: (h - 0.5) * 12, d: f * 140};
 });
 const MOON_P = scatter(MOON, 1), SUN_P = scatter(SUN, 2);
-function PixelIcon({pts, on, cls}) {
-    return (
-        <svg className={"pix " + cls + (on ? " on" : "")} viewBox={`0 0 ${GRID * CELL} ${GRID * CELL}`} aria-hidden="true">
-            {pts.map((p, i) => (
-                <rect key={i} x={p.x * CELL + 0.15} y={p.y * CELL + 0.15} width={CELL - 0.3} height={CELL - 0.3} rx="0.25"
-                      style={{"--dx": p.dx + "px", "--dy": p.dy + "px", "--d": p.d + "ms"}}/>
-            ))}
-        </svg>
-    );
+const OFF = (KNOB - GRID * CELL) / 2;
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+function drawIcons(ctx, dpr, dark, t) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, KNOB, KNOB);
+    // t：0＝剛按下（舊圖示完整），1＝完成（新圖示完整）
+    const layer = (pts, color, out) => {
+        ctx.fillStyle = color;
+        for (const p of pts) {
+            const raw = out ? (t * 620 - p.d) / 320 : (t * 620 - 200 - p.d) / 380;
+            const q = Math.min(1, Math.max(0, raw)), e = easeOut(q);
+            const k = out ? e : 1 - e, alpha = out ? 1 - q : q;
+            if (alpha <= 0.01) continue;
+            const size = (CELL - 0.3) * (1 - 0.6 * k);
+            ctx.globalAlpha = alpha;
+            ctx.fillRect(OFF + p.x + 0.15 + p.dx * k + (CELL - 0.3 - size) / 2, OFF + p.y + 0.15 + p.dy * k + (CELL - 0.3 - size) / 2, size, size);
+        }
+    };
+    if (dark) { layer(SUN_P, "#3C3F3B", true); layer(MOON_P, "#E7EBFF", false); }
+    else { layer(MOON_P, "#E7EBFF", true); layer(SUN_P, "#3C3F3B", false); }
+    ctx.globalAlpha = 1;
 }
 export function ThemeToggle({theme, setTheme}) {
     const dark = theme === "dark";
+    const ref = useRef(null), first = useRef(true);
+    useEffect(() => {
+        const cv = ref.current;
+        if (!cv) return undefined;
+        const dpr = Math.min(3, window.devicePixelRatio || 1);
+        cv.width = KNOB * dpr;
+        cv.height = KNOB * dpr;
+        const ctx = cv.getContext("2d");
+        if (first.current || reduceMotion()) {
+            first.current = false;
+            drawIcons(ctx, dpr, dark, 1);
+            return undefined;
+        }
+        let raf = 0;
+        const t0 = performance.now();
+        const step = (now) => {
+            const t = Math.min(1, (now - t0) / 760);
+            drawIcons(ctx, dpr, dark, t);
+            if (t < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(raf);
+    }, [dark]);
     return (
         <button className={"tt " + (dark ? "dark" : "light")} role="switch" aria-checked={dark} aria-label="深色模式"
                 title={dark ? "切換成淺色" : "切換成深色"} onClick={() => setTheme(dark ? "light" : "dark")}>
-            <span className="tt-track"/>
+            <span className="tt-track l"/><span className="tt-track d"/>
             <span className="tt-knob">
-                <PixelIcon pts={MOON_P} on={dark} cls="moon"/>
-                <PixelIcon pts={SUN_P} on={!dark} cls="sun"/>
+                <span className="sk l"/><span className="sk d"/>
+                <canvas ref={ref} className="tt-pix" aria-hidden="true"/>
             </span>
         </button>
     );
